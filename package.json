@@ -52,9 +52,6 @@
       "allowToChangeInstallationDirectory": true
     }
   },
-  "dependencies": {
-    "electron-serve": "^3.0.1"
-  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
