@@ -1,17 +1,25 @@
 "use client";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { generateCommandQuestions } from "@/lib/generators/command";
-import { Timer } from "@/components/exam/Timer";
-import { ProgressBar } from "@/components/exam/ProgressBar";
-import { EXAM_QUESTION_COUNT, EXAM_TIME_LIMITS, ExamResult, CommandRule } from "@/types";
+import { ExamHeader } from "@/components/exam/ExamHeader";
+import { ChoiceButton } from "@/components/exam/ChoiceButton";
+import {
+  EXAM_QUESTION_COUNT,
+  EXAM_TIME_LIMITS,
+  EXAM_LABELS,
+  EXAM_DESCRIPTIONS,
+  ExamResult,
+  CommandRule,
+} from "@/types";
 
-const COUNT = EXAM_QUESTION_COUNT.command;
-const TIME = EXAM_TIME_LIMITS.command;
+const TYPE = "command";
+const COUNT = EXAM_QUESTION_COUNT[TYPE];
+const TIME = EXAM_TIME_LIMITS[TYPE];
 
 const OP_LABEL: Record<CommandRule["operation"], string> = {
-  add: "+",
-  sub: "-",
+  add: "＋",
+  sub: "－",
   mul: "×",
   div: "÷",
 };
@@ -20,22 +28,17 @@ export default function CommandPage() {
   const router = useRouter();
   const [questions] = useState(() => generateCommandQuestions(COUNT));
   const [current, setCurrent] = useState(0);
-  const [input, setInput] = useState("");
+  const [selected, setSelected] = useState<number | null>(null);
   const [results, setResults] = useState<ExamResult["answers"]>([]);
   const [startTime] = useState(Date.now());
   const [finished, setFinished] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, [current]);
 
   const finish = useCallback(
     (finalResults: ExamResult["answers"]) => {
       if (finished) return;
       setFinished(true);
       const result: ExamResult = {
-        type: "command",
+        type: TYPE,
         total: COUNT,
         correct: finalResults.filter((r) => r.correct).length,
         timeTakenMs: Date.now() - startTime,
@@ -47,90 +50,112 @@ export default function CommandPage() {
     [finished, startTime, router]
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleNext = () => {
+    if (selected === null) return;
     const q = questions[current];
-    const userAnswer = input.trim();
-    const correct = parseInt(userAnswer, 10) === q.answer;
-    const newResults = [...results, { question: q, userAnswer, correct }];
-
+    const chosenValue = q.choices[selected];
+    const correct = chosenValue === q.answer;
+    const newResults = [
+      ...results,
+      { question: q, userAnswer: String(chosenValue), correct },
+    ];
     if (current + 1 >= COUNT) {
       finish(newResults);
     } else {
       setResults(newResults);
       setCurrent((c) => c + 1);
-      setInput("");
+      setSelected(null);
     }
   };
 
   const handleTimeUp = useCallback(() => finish(results), [finish, results]);
-
   const q = questions[current];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-lg space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-orange-400">命令表</h1>
-          <Timer durationMs={TIME} onTimeUp={handleTimeUp} />
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      <ExamHeader
+        label={EXAM_LABELS[TYPE]}
+        current={current + 1}
+        total={COUNT}
+        timeLimitMs={TIME}
+        onTimeUp={handleTimeUp}
+      />
 
-        <ProgressBar current={current} total={COUNT} />
+      <main className="max-w-2xl mx-auto px-4 pt-24 pb-16">
+        <p className="text-sm text-gray-500 mb-6">{EXAM_DESCRIPTIONS[TYPE]}</p>
 
-        <div className="bg-gray-800 rounded-2xl p-6 shadow-xl space-y-4">
-          {/* ルール表 */}
+        {/* 問題カード */}
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mb-6 space-y-5">
+          {/* 命令表 */}
           <div>
-            <p className="text-sm text-gray-400 mb-2">命令表</p>
-            <div className="grid grid-cols-2 gap-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+              命令表
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {q.rules.map((rule) => (
                 <div
                   key={rule.symbol}
-                  className="bg-gray-700 rounded-lg px-3 py-2 flex items-center justify-between text-sm"
+                  className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center"
                 >
-                  <span className="text-2xl">{rule.symbol}</span>
-                  <span className="text-gray-300">
-                    {OP_LABEL[rule.operation]} {rule.value}
-                  </span>
+                  <div className="text-2xl mb-1">{rule.symbol}</div>
+                  <div className="text-sm font-medium text-gray-600">
+                    {OP_LABEL[rule.operation]}&thinsp;{rule.value}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
           {/* 問題 */}
-          <div className="border-t border-gray-700 pt-4">
-            <p className="text-sm text-gray-400 mb-1">初期値: <span className="text-white font-bold text-lg">{q.initialValue}</span></p>
-            <p className="text-sm text-gray-400 mb-2">命令列:</p>
-            <div className="flex gap-2 flex-wrap">
-              {q.steps.map((sym, i) => (
-                <span
-                  key={i}
-                  className="bg-orange-900/40 border border-orange-700 rounded-lg w-10 h-10 flex items-center justify-center text-xl"
-                >
-                  {sym}
-                </span>
-              ))}
+          <div className="border-t border-gray-100 pt-5">
+            <div className="flex items-center gap-6 flex-wrap">
+              <div className="text-center">
+                <p className="text-xs text-gray-400 mb-1">初期値</p>
+                <div className="w-12 h-12 bg-blue-50 border-2 border-blue-300 rounded-lg flex items-center justify-center text-xl font-bold text-blue-700">
+                  {q.initialValue}
+                </div>
+              </div>
+              <div className="text-gray-300 text-2xl">→</div>
+              <div className="flex-1">
+                <p className="text-xs text-gray-400 mb-2">命令列</p>
+                <div className="flex gap-2 flex-wrap">
+                  {q.steps.map((sym, i) => (
+                    <div
+                      key={i}
+                      className="w-10 h-10 bg-amber-50 border border-amber-300 rounded-lg flex items-center justify-center text-lg font-medium"
+                    >
+                      {sym}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            ref={inputRef}
-            type="number"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="最終的な値を入力..."
-            className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-center text-2xl focus:outline-none focus:border-orange-500 transition"
-          />
+        <div className="space-y-3 mb-8">
+          {q.choices.map((choice, i) => (
+            <ChoiceButton
+              key={i}
+              index={i}
+              value={choice}
+              selected={selected === i}
+              correct={null}
+              onClick={() => setSelected(i)}
+            />
+          ))}
+        </div>
+
+        <div className="flex justify-end">
           <button
-            type="submit"
-            disabled={input.trim() === ""}
-            className="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-3 rounded-xl transition"
+            onClick={handleNext}
+            disabled={selected === null}
+            className="bg-blue-700 hover:bg-blue-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold px-10 py-3 rounded-lg transition-colors"
           >
-            次へ →
+            次の問題へ →
           </button>
-        </form>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

@@ -2,18 +2,25 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { generateCipherQuestions } from "@/lib/generators/cipher";
-import { Timer } from "@/components/exam/Timer";
-import { ProgressBar } from "@/components/exam/ProgressBar";
-import { EXAM_QUESTION_COUNT, EXAM_TIME_LIMITS, ExamResult } from "@/types";
+import { ExamHeader } from "@/components/exam/ExamHeader";
+import { ChoiceButton } from "@/components/exam/ChoiceButton";
+import {
+  EXAM_QUESTION_COUNT,
+  EXAM_TIME_LIMITS,
+  EXAM_LABELS,
+  EXAM_DESCRIPTIONS,
+  ExamResult,
+} from "@/types";
 
-const COUNT = EXAM_QUESTION_COUNT.cipher;
-const TIME = EXAM_TIME_LIMITS.cipher;
+const TYPE = "cipher";
+const COUNT = EXAM_QUESTION_COUNT[TYPE];
+const TIME = EXAM_TIME_LIMITS[TYPE];
 
 export default function CipherPage() {
   const router = useRouter();
   const [questions] = useState(() => generateCipherQuestions(COUNT));
   const [current, setCurrent] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
   const [results, setResults] = useState<ExamResult["answers"]>([]);
   const [startTime] = useState(Date.now());
   const [finished, setFinished] = useState(false);
@@ -23,7 +30,7 @@ export default function CipherPage() {
       if (finished) return;
       setFinished(true);
       const result: ExamResult = {
-        type: "cipher",
+        type: TYPE,
         total: COUNT,
         correct: finalResults.filter((r) => r.correct).length,
         timeTakenMs: Date.now() - startTime,
@@ -35,91 +42,99 @@ export default function CipherPage() {
     [finished, startTime, router]
   );
 
-  const handleSelect = (choice: string) => {
-    if (selected) return;
-    setSelected(choice);
+  const handleNext = () => {
+    if (selected === null) return;
     const q = questions[current];
-    const correct = choice === q.answer;
-    const newResults = [...results, { question: q, userAnswer: choice, correct }];
-
-    setTimeout(() => {
-      if (current + 1 >= COUNT) {
-        finish(newResults);
-      } else {
-        setResults(newResults);
-        setCurrent((c) => c + 1);
-        setSelected(null);
-      }
-    }, 400);
+    const chosenValue = q.choices[selected];
+    const correct = chosenValue === q.answer;
+    const newResults = [
+      ...results,
+      { question: q, userAnswer: String(chosenValue), correct },
+    ];
+    if (current + 1 >= COUNT) {
+      finish(newResults);
+    } else {
+      setResults(newResults);
+      setCurrent((c) => c + 1);
+      setSelected(null);
+    }
   };
 
   const handleTimeUp = useCallback(() => finish(results), [finish, results]);
-
   const q = questions[current];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-lg space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-green-400">暗号</h1>
-          <Timer durationMs={TIME} onTimeUp={handleTimeUp} />
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      <ExamHeader
+        label={EXAM_LABELS[TYPE]}
+        current={current + 1}
+        total={COUNT}
+        timeLimitMs={TIME}
+        onTimeUp={handleTimeUp}
+      />
 
-        <ProgressBar current={current} total={COUNT} />
+      <main className="max-w-2xl mx-auto px-4 pt-24 pb-16">
+        <p className="text-sm text-gray-500 mb-6">{EXAM_DESCRIPTIONS[TYPE]}</p>
 
-        <div className="bg-gray-800 rounded-2xl p-6 shadow-xl space-y-4">
+        {/* 問題カード */}
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mb-6 space-y-5">
           {/* 対応表 */}
           <div>
-            <p className="text-sm text-gray-400 mb-2">記号と文字の対応表</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+              暗号表
+            </p>
             <div className="flex gap-3 flex-wrap">
               {Object.entries(q.table).map(([sym, char]) => (
-                <div key={sym} className="bg-gray-700 rounded-lg px-3 py-2 text-center">
+                <div
+                  key={sym}
+                  className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-center min-w-[3.5rem]"
+                >
                   <div className="text-2xl">{sym}</div>
-                  <div className="text-sm text-gray-300">{char}</div>
+                  <div className="text-sm font-medium text-gray-600 mt-1">{char}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* 暗号 */}
-          <div className="border-t border-gray-700 pt-4">
-            <p className="text-sm text-gray-400 mb-2">この暗号が表す言葉は？</p>
+          {/* 暗号列 */}
+          <div className="border-t border-gray-100 pt-5">
+            <p className="text-xs text-gray-400 mb-3">この暗号が表す言葉は？</p>
             <div className="flex gap-3 justify-center">
               {q.encoded.map((sym, i) => (
-                <span
+                <div
                   key={i}
-                  className="bg-green-900/40 border border-green-700 rounded-lg w-12 h-12 flex items-center justify-center text-2xl"
+                  className="w-14 h-14 bg-blue-50 border-2 border-blue-300 rounded-lg flex items-center justify-center text-2xl"
                 >
                   {sym}
-                </span>
+                </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* 4択 */}
-        <div className="grid grid-cols-2 gap-3">
-          {q.choices.map((choice) => {
-            const isSelected = selected === choice;
-            const isCorrect = choice === q.answer;
-            let style = "bg-gray-800 border-gray-600 hover:border-green-500";
-            if (selected) {
-              if (isCorrect) style = "bg-green-800 border-green-500";
-              else if (isSelected) style = "bg-red-800 border-red-500";
-              else style = "bg-gray-800 border-gray-700 opacity-50";
-            }
-            return (
-              <button
-                key={choice}
-                onClick={() => handleSelect(choice)}
-                className={`border rounded-xl py-4 text-xl font-bold transition ${style}`}
-              >
-                {choice}
-              </button>
-            );
-          })}
+        <div className="space-y-3 mb-8">
+          {q.choices.map((choice, i) => (
+            <ChoiceButton
+              key={i}
+              index={i}
+              value={choice}
+              selected={selected === i}
+              correct={null}
+              onClick={() => setSelected(i)}
+            />
+          ))}
         </div>
-      </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={handleNext}
+            disabled={selected === null}
+            className="bg-blue-700 hover:bg-blue-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold px-10 py-3 rounded-lg transition-colors"
+          >
+            次の問題へ →
+          </button>
+        </div>
+      </main>
     </div>
   );
 }

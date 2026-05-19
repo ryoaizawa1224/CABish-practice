@@ -26,11 +26,12 @@ export function Timer({ durationMs, onTimeUp }: TimerProps) {
   const minutes = Math.floor(remaining / 60000);
   const seconds = Math.floor((remaining % 60000) / 1000);
   const pct = remaining / durationMs;
-  const color = pct > 0.5 ? "text-green-400" : pct > 0.25 ? "text-yellow-400" : "text-red-400";
+  const color =
+    pct > 0.4 ? "text-gray-800" : pct > 0.2 ? "text-amber-600" : "text-red-600";
 
   return (
-    <div className={`font-mono text-2xl font-bold tabular-nums ${color}`}>
-      {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+    <div className={`font-mono font-bold tabular-nums text-sm ${color}`}>
+      残り {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
     </div>
   );
 }

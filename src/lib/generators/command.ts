@@ -1,16 +1,28 @@
 import { CommandQuestion, CommandRule } from "@/types";
 
-const SYMBOLS = ["▲", "■", "●", "◆", "★", "▼", "◀", "▶", "♦", "✦"];
+const SYMBOLS = ["▲", "■", "●", "◆", "★", "▼", "◀", "▶"];
 
 function rand(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function applyRule(
-  value: number,
-  op: CommandRule["operation"],
-  v: number
-): number {
+function shuffle<T>(arr: T[]): T[] {
+  return arr.slice().sort(() => Math.random() - 0.5);
+}
+
+function makeChoices(answer: number): number[] {
+  const set = new Set<number>([answer]);
+  const offsets = [-5, -3, -1, 1, 3, 5, -7, 7, 2, -2];
+  for (const o of shuffle(offsets)) {
+    set.add(answer + o);
+    if (set.size >= 5) break;
+  }
+  let extra = 10;
+  while (set.size < 5) { set.add(answer + extra); extra += 5; }
+  return shuffle([...set]);
+}
+
+function applyRule(value: number, op: CommandRule["operation"], v: number): number {
   switch (op) {
     case "add": return value + v;
     case "sub": return value - v;
@@ -20,23 +32,20 @@ function applyRule(
 }
 
 export function generateCommandQuestion(id: number): CommandQuestion {
-  const ruleCount = rand(3, 5);
-  const symbols = SYMBOLS.slice().sort(() => Math.random() - 0.5).slice(0, ruleCount);
+  const ruleCount = rand(3, 4);
+  const syms = shuffle(SYMBOLS).slice(0, ruleCount);
   const ops: CommandRule["operation"][] = ["add", "sub", "mul", "div"];
 
-  const rules: CommandRule[] = symbols.map((symbol) => ({
+  const rules: CommandRule[] = syms.map((symbol) => ({
     symbol,
     operation: ops[Math.floor(Math.random() * ops.length)],
     value: rand(1, 9),
   }));
+  // 除算は2以上
+  rules.forEach((r) => { if (r.operation === "div") r.value = rand(2, 4); });
 
-  // 割り算は value=1以上になるように（0除算回避）
-  rules.forEach((r) => {
-    if (r.operation === "div") r.value = rand(2, 5);
-  });
-
-  const initialValue = rand(10, 50);
-  const stepCount = rand(4, 7);
+  const initialValue = rand(10, 30);
+  const stepCount = rand(4, 6);
   const steps: string[] = Array.from(
     { length: stepCount },
     () => rules[Math.floor(Math.random() * rules.length)].symbol
@@ -55,6 +64,7 @@ export function generateCommandQuestion(id: number): CommandQuestion {
     initialValue,
     steps,
     answer: current,
+    choices: makeChoices(current),
   };
 }
 

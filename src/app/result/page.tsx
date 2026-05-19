@@ -10,98 +10,114 @@ export default function ResultPage() {
 
   useEffect(() => {
     const data = sessionStorage.getItem("cabResult");
-    if (!data) {
-      router.push("/");
-      return;
-    }
+    if (!data) { router.push("/"); return; }
     setResult(JSON.parse(data));
   }, [router]);
 
   if (!result) return null;
 
-  const { type, total, correct, timeTakenMs } = result;
+  const { type, total, correct, timeTakenMs, answers } = result;
   const pct = Math.round((correct / total) * 100);
   const minutes = Math.floor(timeTakenMs / 60000);
   const seconds = Math.floor((timeTakenMs % 60000) / 1000);
+  const wrong = answers.filter((a) => !a.correct);
 
   const grade =
-    pct >= 90 ? { label: "S", color: "text-yellow-400" }
-    : pct >= 75 ? { label: "A", color: "text-blue-400" }
-    : pct >= 60 ? { label: "B", color: "text-green-400" }
-    : pct >= 40 ? { label: "C", color: "text-orange-400" }
-    : { label: "D", color: "text-red-400" };
+    pct >= 90 ? { label: "S", color: "text-yellow-500", bg: "bg-yellow-50", border: "border-yellow-300" }
+    : pct >= 75 ? { label: "A", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-300" }
+    : pct >= 60 ? { label: "B", color: "text-green-600", bg: "bg-green-50", border: "border-green-300" }
+    : pct >= 40 ? { label: "C", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-300" }
+    : { label: "D", color: "text-red-600", bg: "bg-red-50", border: "border-red-300" };
 
   return (
-    <main className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-lg space-y-6">
-        <div className="text-center">
-          <p className="text-gray-400 text-sm mb-1">{EXAM_LABELS[type]}</p>
-          <h1 className="text-3xl font-extrabold">結果</h1>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* ヘッダー */}
+      <header className="bg-white border-b border-gray-200">
+        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">
+          <span className="text-xs font-bold text-white bg-blue-700 px-2.5 py-1 rounded">CAB</span>
+          <span className="font-semibold text-gray-800">{EXAM_LABELS[type]} — 結果</span>
         </div>
+      </header>
 
+      <main className="max-w-2xl mx-auto w-full px-4 py-10 space-y-5">
         {/* スコアカード */}
-        <div className="bg-gray-800 rounded-2xl p-8 text-center shadow-xl space-y-4">
-          <div className={`text-8xl font-black ${grade.color}`}>{grade.label}</div>
-          <div className="text-4xl font-bold">
-            {correct} <span className="text-gray-500 text-2xl">/ {total}</span>
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
+          <div className="flex items-center gap-6">
+            {/* グレード */}
+            <div className={`w-20 h-20 rounded-xl border-2 ${grade.bg} ${grade.border} flex items-center justify-center`}>
+              <span className={`text-4xl font-black ${grade.color}`}>{grade.label}</span>
+            </div>
+
+            {/* スタッツ */}
+            <div className="flex-1">
+              <div className="text-3xl font-bold text-gray-900">
+                {correct}
+                <span className="text-lg text-gray-400 font-normal ml-1">/ {total}問正解</span>
+              </div>
+              <div className="text-xl font-semibold text-gray-600 mt-0.5">
+                正答率 {pct}%
+              </div>
+              <div className="text-sm text-gray-400 mt-1">
+                所要時間: {minutes}分 {String(seconds).padStart(2, "0")}秒
+              </div>
+            </div>
           </div>
-          <div className="text-2xl font-semibold text-gray-300">{pct}%</div>
-          <div className="text-gray-500 text-sm">
-            所要時間: {minutes}分 {String(seconds).padStart(2, "0")}秒
+
+          {/* スコアバー */}
+          <div className="mt-6">
+            <div className="w-full bg-gray-100 rounded-full h-2.5">
+              <div
+                className="bg-blue-600 h-2.5 rounded-full transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
           </div>
         </div>
 
-        {/* 詳細（間違いリスト） */}
-        {result.answers.filter((a) => !a.correct).length > 0 && (
-          <div className="bg-gray-800 rounded-2xl p-6 shadow-xl">
-            <h2 className="font-bold text-red-400 mb-3">
-              間違えた問題 ({result.answers.filter((a) => !a.correct).length}問)
+        {/* 間違い一覧 */}
+        {wrong.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+            <h2 className="font-semibold text-gray-800 mb-4">
+              間違えた問題
+              <span className="ml-2 text-sm font-normal text-red-500">{wrong.length}問</span>
             </h2>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {result.answers
-                .filter((a) => !a.correct)
-                .map((a, i) => {
-                  const q = a.question;
-                  let display = "";
-                  if (q.type === "arithmetic") display = q.displayStr;
-                  else if (q.type === "sequence")
-                    display = `${q.sequence.join(", ")}, □`;
-                  else if (q.type === "command")
-                    display = `初期値${q.initialValue} → [${q.steps.join("")}]`;
-                  else if (q.type === "cipher")
-                    display = q.encoded.join(" ");
-                  return (
-                    <div
-                      key={i}
-                      className="text-sm bg-gray-700 rounded-lg px-3 py-2 flex justify-between"
-                    >
-                      <span className="text-gray-300">{display}</span>
-                      <span>
-                        <span className="text-red-400">{a.userAnswer || "未回答"}</span>
-                        {" → "}
-                        <span className="text-green-400">{q.answer}</span>
-                      </span>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {wrong.map((a, i) => {
+                const q = a.question;
+                let display = "";
+                if (q.type === "arithmetic") display = q.displayStr;
+                else if (q.type === "sequence") display = `${q.sequence.join("  ")}  ?`;
+                else if (q.type === "command") display = `初期値 ${q.initialValue} → [${q.steps.join("")}]`;
+                else if (q.type === "cipher") display = q.encoded.join(" ");
+                return (
+                  <div key={i} className="flex justify-between items-center text-sm bg-gray-50 rounded-lg px-4 py-2.5">
+                    <span className="text-gray-700 font-mono">{display}</span>
+                    <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                      <span className="text-red-400 line-through">{a.userAnswer || "未回答"}</span>
+                      <span className="text-gray-400">→</span>
+                      <span className="text-green-600 font-semibold">{q.answer}</span>
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* ボタン */}
-        <div className="space-y-3">
-          <Link href={`/${type}`}>
-            <button className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition">
-              もう一度練習する
+        <div className="flex gap-3">
+          <Link href={`/${type}`} className="flex-1">
+            <button className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-lg transition-colors">
+              もう一度
             </button>
           </Link>
-          <Link href="/">
-            <button className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 rounded-xl transition">
-              トップへ戻る
+          <Link href="/" className="flex-1">
+            <button className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3 rounded-lg transition-colors">
+              テスト選択に戻る
             </button>
           </Link>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
