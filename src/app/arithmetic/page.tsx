@@ -42,19 +42,19 @@ export default function ArithmeticPage() {
     [finished, startTime, router]
   );
 
-  const handleSelect = (choiceIndex: number) => {
-    if (selected !== null) return;
-    setSelected(choiceIndex);
-  };
-
   const handleNext = () => {
     if (selected === null) return;
     const q = questions[current];
-    const chosenValue = q.choices[selected];
-    const correct = chosenValue === q.answer;
+    const correctChoiceIndex = q.choices.indexOf(q.answer);
+    const correct = selected === correctChoiceIndex;
     const newResults = [
       ...results,
-      { question: q, userAnswer: String(chosenValue), correct },
+      {
+        questionId: q.id,
+        userChoiceIndex: selected,
+        correctChoiceIndex,
+        correct,
+      },
     ];
     if (current + 1 >= COUNT) {
       finish(newResults);
@@ -66,7 +66,6 @@ export default function ArithmeticPage() {
   };
 
   const handleTimeUp = useCallback(() => finish(results), [finish, results]);
-
   const q = questions[current];
 
   return (
@@ -80,31 +79,27 @@ export default function ArithmeticPage() {
       />
 
       <main className="max-w-2xl mx-auto px-4 pt-24 pb-16">
-        {/* 指示文 */}
         <p className="text-sm text-gray-500 mb-6">{EXAM_DESCRIPTIONS[TYPE]}</p>
 
-        {/* 問題カード */}
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8 mb-6 text-center">
           <p className="text-4xl font-bold tracking-widest text-gray-900">
             {q.displayStr}
           </p>
         </div>
 
-        {/* 選択肢 */}
         <div className="space-y-3 mb-8">
           {q.choices.map((choice, i) => (
             <ChoiceButton
               key={i}
               index={i}
-              value={choice}
               selected={selected === i}
-              correct={null}
-              onClick={() => handleSelect(i)}
-            />
+              onClick={() => setSelected(i)}
+            >
+              <span className="text-lg font-medium">{choice}</span>
+            </ChoiceButton>
           ))}
         </div>
 
-        {/* 次へボタン */}
         <div className="flex justify-end">
           <button
             onClick={handleNext}

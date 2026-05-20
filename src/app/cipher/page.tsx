@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { generateCipherQuestions } from "@/lib/generators/cipher";
 import { ExamHeader } from "@/components/exam/ExamHeader";
 import { ChoiceButton } from "@/components/exam/ChoiceButton";
+import { ShapeSVG } from "@/components/shapes/ShapeSVG";
 import {
   EXAM_QUESTION_COUNT,
   EXAM_TIME_LIMITS,
@@ -11,6 +12,7 @@ import {
   EXAM_DESCRIPTIONS,
   ExamResult,
 } from "@/types";
+import { shapesEqual } from "@/lib/shapes/types";
 
 const TYPE = "cipher";
 const COUNT = EXAM_QUESTION_COUNT[TYPE];
@@ -45,11 +47,11 @@ export default function CipherPage() {
   const handleNext = () => {
     if (selected === null) return;
     const q = questions[current];
-    const chosenValue = q.choices[selected];
-    const correct = chosenValue === q.answer;
+    const correctChoiceIndex = q.choices.findIndex((c) => shapesEqual(c, q.answer));
+    const correct = selected === correctChoiceIndex;
     const newResults = [
       ...results,
-      { question: q, userAnswer: String(chosenValue), correct },
+      { questionId: q.id, userChoiceIndex: selected, correctChoiceIndex, correct },
     ];
     if (current + 1 >= COUNT) {
       finish(newResults);
@@ -76,52 +78,66 @@ export default function CipherPage() {
       <main className="max-w-2xl mx-auto px-4 pt-24 pb-16">
         <p className="text-sm text-gray-500 mb-6">{EXAM_DESCRIPTIONS[TYPE]}</p>
 
-        {/* 問題カード */}
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mb-6 space-y-5">
-          {/* 対応表 */}
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-              暗号表
-            </p>
-            <div className="flex gap-3 flex-wrap">
-              {Object.entries(q.table).map(([sym, char]) => (
-                <div
-                  key={sym}
-                  className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-center min-w-[3.5rem]"
-                >
-                  <div className="text-2xl">{sym}</div>
-                  <div className="text-sm font-medium text-gray-600 mt-1">{char}</div>
+        {/* ヒント例 */}
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mb-4">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+            ヒント例：暗号 <span className="text-blue-700 text-lg align-middle mx-1">{q.symbol}</span> の意味を考えてください
+          </p>
+          <div className="space-y-3">
+            {q.examples.map((ex, i) => (
+              <div key={i} className="flex items-center justify-center gap-3">
+                <div className="w-14 h-14 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center">
+                  <ShapeSVG shape={ex.input} size={40} />
                 </div>
-              ))}
-            </div>
+                <div className="text-gray-400 text-lg">→</div>
+                <div className="w-10 h-10 bg-blue-700 text-white rounded-md flex items-center justify-center text-xl font-bold">
+                  {q.symbol}
+                </div>
+                <div className="text-gray-400 text-lg">→</div>
+                <div className="w-14 h-14 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center">
+                  <ShapeSVG shape={ex.output} size={40} />
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
 
-          {/* 暗号列 */}
-          <div className="border-t border-gray-100 pt-5">
-            <p className="text-xs text-gray-400 mb-3">この暗号が表す言葉は？</p>
-            <div className="flex gap-3 justify-center">
-              {q.encoded.map((sym, i) => (
-                <div
-                  key={i}
-                  className="w-14 h-14 bg-blue-50 border-2 border-blue-300 rounded-lg flex items-center justify-center text-2xl"
-                >
-                  {sym}
-                </div>
-              ))}
+        {/* 問題 */}
+        <div className="bg-white border-2 border-blue-300 rounded-xl shadow-sm p-6 mb-6">
+          <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-3">
+            問題
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-16 h-16 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-center">
+              <ShapeSVG shape={q.questionInput} size={48} />
+            </div>
+            <div className="text-gray-400 text-xl">→</div>
+            <div className="w-12 h-12 bg-blue-700 text-white rounded-md flex items-center justify-center text-2xl font-bold">
+              {q.symbol}
+            </div>
+            <div className="text-gray-400 text-xl">→</div>
+            <div className="w-16 h-16 bg-blue-50 border-2 border-blue-400 border-dashed rounded-lg flex items-center justify-center text-3xl font-bold text-blue-500">
+              ?
             </div>
           </div>
         </div>
 
-        <div className="space-y-3 mb-8">
+        {/* 5択 */}
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 mb-8">
           {q.choices.map((choice, i) => (
             <ChoiceButton
               key={i}
               index={i}
-              value={choice}
               selected={selected === i}
-              correct={null}
               onClick={() => setSelected(i)}
-            />
+              compact
+            >
+              <ShapeSVG
+                shape={choice}
+                size={42}
+                color={selected === i ? "#ffffff" : "#111827"}
+              />
+            </ChoiceButton>
           ))}
         </div>
 

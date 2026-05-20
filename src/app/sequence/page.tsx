@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { generateSequenceQuestions } from "@/lib/generators/sequence";
 import { ExamHeader } from "@/components/exam/ExamHeader";
 import { ChoiceButton } from "@/components/exam/ChoiceButton";
+import { ShapeSVG } from "@/components/shapes/ShapeSVG";
 import {
   EXAM_QUESTION_COUNT,
   EXAM_TIME_LIMITS,
@@ -11,6 +12,7 @@ import {
   EXAM_DESCRIPTIONS,
   ExamResult,
 } from "@/types";
+import { shapesEqual } from "@/lib/shapes/types";
 
 const TYPE = "sequence";
 const COUNT = EXAM_QUESTION_COUNT[TYPE];
@@ -45,11 +47,11 @@ export default function SequencePage() {
   const handleNext = () => {
     if (selected === null) return;
     const q = questions[current];
-    const chosenValue = q.choices[selected];
-    const correct = chosenValue === q.answer;
+    const correctChoiceIndex = q.choices.findIndex((c) => shapesEqual(c, q.answer));
+    const correct = selected === correctChoiceIndex;
     const newResults = [
       ...results,
-      { question: q, userAnswer: String(chosenValue), correct },
+      { questionId: q.id, userChoiceIndex: selected, correctChoiceIndex, correct },
     ];
     if (current + 1 >= COUNT) {
       finish(newResults);
@@ -76,34 +78,39 @@ export default function SequencePage() {
       <main className="max-w-2xl mx-auto px-4 pt-24 pb-16">
         <p className="text-sm text-gray-500 mb-6">{EXAM_DESCRIPTIONS[TYPE]}</p>
 
-        {/* 問題カード */}
+        {/* 問題カード: 5つの図形 + ? */}
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8 mb-6">
-          <p className="text-sm text-gray-400 mb-4">数列</p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
-            {q.sequence.map((n, i) => (
+            {q.shapes.map((s, i) => (
               <div
                 key={i}
-                className="w-14 h-14 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center text-2xl font-bold text-gray-900"
+                className="w-16 h-16 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center"
               >
-                {n}
+                <ShapeSVG shape={s} size={44} />
               </div>
             ))}
-            <div className="w-14 h-14 bg-blue-50 border-2 border-blue-400 border-dashed rounded-lg flex items-center justify-center text-2xl font-bold text-blue-500">
+            <div className="w-16 h-16 bg-blue-50 border-2 border-blue-400 border-dashed rounded-lg flex items-center justify-center text-3xl font-bold text-blue-500">
               ?
             </div>
           </div>
         </div>
 
-        <div className="space-y-3 mb-8">
+        {/* 5択 */}
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 mb-8">
           {q.choices.map((choice, i) => (
             <ChoiceButton
               key={i}
               index={i}
-              value={choice}
               selected={selected === i}
-              correct={null}
               onClick={() => setSelected(i)}
-            />
+              compact
+            >
+              <ShapeSVG
+                shape={choice}
+                size={42}
+                color={selected === i ? "#ffffff" : "#111827"}
+              />
+            </ChoiceButton>
           ))}
         </div>
 
